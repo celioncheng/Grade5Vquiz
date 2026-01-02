@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>瓦力的單字大冒險 - 線上測驗</title>
+    <style>
+        :root {
+            --primary-color: #4a90e2;
+            --secondary-color: #f5a623;
+            --success-color: #7ed321;
+            --error-color: #d0021b;
+            --bg-color: #f0f7ff;
+        }
+
+        body {
+            font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        #quiz-container {
+            background: white;
+            width: 90%;
+            max-width: 600px;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .hidden { display: none; }
+
+        h1 { color: var(--primary-color); margin-bottom: 10px; }
+        p { color: #666; line-height: 1.6; }
+
+        .btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 18px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: transform 0.2s, background-color 0.2s;
+            margin: 10px;
+        }
+
+        .btn:hover {
+            background-color: #357abd;
+            transform: scale(1.05);
+        }
+
+        .option-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .option-btn {
+            background-color: white;
+            border: 2px solid var(--primary-color);
+            padding: 15px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.2s;
+        }
+
+        .option-btn:hover {
+            background-color: #eef6ff;
+        }
+
+        .audio-btn {
+            background-color: var(--secondary-color);
+            border: none;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 24px;
+            margin: 15px 0;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background-color: #eee;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background-color: var(--success-color);
+            width: 0%;
+            transition: width 0.3s;
+            border-radius: 5px;
+        }
+
+        .result-item {
+            text-align: left;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 5px;
+        }
+
+        .wrong { color: var(--error-color); font-weight: bold; }
+        .correct { color: var(--success-color); font-weight: bold; }
+        
+        .section-tag {
+            display: inline-block;
+            background: #e1e1e1;
+            padding: 2px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="quiz-container">
+    <div id="start-screen">
+        <h1>🚀 瓦力的單字大冒險</h1>
+        <p>歡迎來到單字檢測站！這場測驗將挑戰你的發音、單字辨識與實際運用能力。準備好挑戰 15 題測驗了嗎？</p>
+        <div style="font-size: 50px;">🎒</div>
+        <button class="btn" onclick="startQuiz()">開始冒險</button>
+    </div>
+
+    <div id="quiz-screen" class="hidden">
+        <div class="progress-bar"><div id="progress-fill" class="progress-fill"></div></div>
+        <div id="section-label" class="section-tag"></div>
+        <div id="question-number">題目 1/15</div>
+        <h2 id="question-text">題目載入中...</h2>
+        
+        <div id="audio-container" class="hidden">
+            <button class="audio-btn" onclick="playAudio()">🔊</button>
+            <p>點擊聽發音</p>
+        </div>
+
+        <div class="option-container" id="options">
+            </div>
+    </div>
+
+    <div id="result-screen" class="hidden">
+        <h1>測驗完成！🎉</h1>
+        <div id="score-display" style="font-size: 40px; font-weight: bold; color: var(--primary-color); margin: 20px 0;"></div>
+        <p id="accuracy-text"></p>
+        
+        <div id="error-review" style="max-height: 300px; overflow-y: auto; background: #f9f9f9; padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+            <h3>錯題複習：</h3>
+            <div id="error-list"></div>
+        </div>
+
+        <button class="btn" onclick="location.reload()">重新挑戰 (刷新題目)</button>
+    </div>
+</div>
+
+<script>
+    // 題庫設計：確保每個部分都有足夠題目供隨機選取
+    const questionPool = {
+        pronunciation: [
+            { q: "I _ d i a (印度)", a: "n", options: ["m", "n", "l", "r"], word: "India" },
+            { q: "C a n _ d a (加拿大)", a: "a", options: ["e", "a", "o", "i"], word: "Canada" },
+            { q: "F r _ n c e (法國)", a: "a", options: ["e", "u", "a", "o"], word: "France" },
+            { q: "c _ l d (感冒)", a: "o", options: ["a", "u", "o", "e"], word: "cold" },
+            { q: "f e v _ r (發燒)", a: "e", options: ["i", "a", "e", "u"], word: "fever" },
+            { q: "p i z _ a (披薩)", a: "z", options: ["s", "z", "t", "k"], word: "pizza" },
+            { q: "s o _ p (湯)", a: "u", options: ["u", "a", "o", "e"], word: "soup" },
+            { q: "_ t r o n g (強壯的)", a: "s", options: ["c", "s", "z", "t"], word: "strong" }
+        ],
+        translation: [
+            { q: "請問「大笨鐘」的英文是？", a: "Big Ben", options: ["Big Ben", "Eiffel Tower", "Mt. Fuji", "Taipei 101"] },
+            { q: "請問「雪梨歌劇院」的英文是？", a: "Sydney Opera House", options: ["White House", "Sydney Opera House", "Statue of Liberty", "Big Ben"] },
+            { q: "請問「流鼻涕」的英文是？", a: "runny nose", options: ["cough", "fever", "runny nose", "headache"] },
+            { q: "請問「三明治」的英文是？", a: "sandwiches", options: ["dumplings", "noodles", "sandwiches", "steak"] },
+            { q: "請問「做作業」的英文是？", a: "do my homework", options: ["get up", "go to school", "do my homework", "go home"] },
+            { q: "請問「外向的」的英文是？", a: "outgoing", options: ["brave", "strong", "outgoing", "French"] },
+            { q: "請問「醫院」的英文是？", a: "hospital", options: ["school", "hospital", "home", "stomach"] }
+        ],
+        dialogue: [
+            { q: "A: Where are you from?<br>B: I'm from ____. (日本)", a: "Japan", options: ["India", "Japan", "the UK", "France"] },
+            { q: "A: What's wrong?<br>B: I have a ____. My head hurts.", a: "headache", options: ["headache", "toothache", "stomachache", "cough"] },
+            { q: "A: I'm hungry.<br>B: Let's eat ____. (水餃)", a: "dumplings", options: ["rice", "noodles", "dumplings", "pizza"] },
+            { q: "A: It's 7:00 AM.<br>B: It's time to ____.", a: "get up", options: ["go home", "get up", "go to bed", "have lunch"] },
+            { q: "A: Is she brave?<br>B: Yes, she is very ____.", a: "brave", options: ["strong", "brave", "outgoing", "French"] },
+            { q: "A: I have a ____.<br>B: You should drink warm water for your throat.", a: "sore throat", options: ["headache", "runny nose", "sore throat", "toothache"] }
+        ]
+    };
+
+    let currentQuestions = [];
+    let currentIdx = 0;
+    let score = 0;
+    let userAnswers = [];
+
+    function shuffle(array) {
+        return array.sort(() => Math.random() - 0.5);
+    }
+
+    function startQuiz() {
+        // 隨機選取題目：各部分取5題
+        const pSet = shuffle([...questionPool.pronunciation]).slice(0, 5).map(item => ({...item, type: '發音測驗', hasAudio: true}));
+        const tSet = shuffle([...questionPool.translation]).slice(0, 5).map(item => ({...item, type: '中選英', hasAudio: false}));
+        const dSet = shuffle([...questionPool.dialogue]).slice(0, 5).map(item => ({...item, type: '情境對話', hasAudio: false}));
+        
+        currentQuestions = [...pSet, ...tSet, ...dSet];
+        currentIdx = 0;
+        score = 0;
+        userAnswers = [];
+
+        document.getElementById('start-screen').classList.add('hidden');
+        document.getElementById('result-screen').classList.add('hidden');
+        document.getElementById('quiz-screen').classList.remove('hidden');
+        
+        showQuestion();
+    }
+
+    function showQuestion() {
+        const q = currentQuestions[currentIdx];
+        document.getElementById('section-label').innerText = q.type;
+        document.getElementById('question-number').innerText = `題目 ${currentIdx + 1}/15`;
+        document.getElementById('question-text').innerHTML = q.q;
+        
+        // 進度條
+        document.getElementById('progress-fill').style.width = `${(currentIdx / 15) * 100}%`;
+
+        // 音訊按鈕
+        if (q.hasAudio) {
+            document.getElementById('audio-container').classList.remove('hidden');
+        } else {
+            document.getElementById('audio-container').classList.add('hidden');
+        }
+
+        // 選項
+        const optionsDiv = document.getElementById('options');
+        optionsDiv.innerHTML = '';
+        shuffle([...q.options]).forEach(opt => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = opt;
+            btn.onclick = () => handleAnswer(opt);
+            optionsDiv.appendChild(btn);
+        });
+    }
+
+    function playAudio() {
+        const q = currentQuestions[currentIdx];
+        const msg = new SpeechSynthesisUtterance(q.word || q.a);
+        msg.lang = 'en-US';
+        window.speechSynthesis.speak(msg);
+    }
+
+    function handleAnswer(selected) {
+        const q = currentQuestions[currentIdx];
+        const isCorrect = (selected === q.a);
+        if (isCorrect) score++;
+        
+        userAnswers.push({
+            question: q.q.replace('<br>', ' '),
+            selected: selected,
+            correct: q.a,
+            isCorrect: isCorrect
+        });
+
+        currentIdx++;
+        if (currentIdx < 15) {
+            showQuestion();
+        } else {
+            showResult();
+        }
+    }
+
+    function showResult() {
+        document.getElementById('quiz-screen').classList.add('hidden');
+        document.getElementById('result-screen').classList.remove('hidden');
+        
+        const accuracy = Math.round((score / 15) * 100);
+        document.getElementById('score-display').innerText = `${accuracy}%`;
+        document.getElementById('accuracy-text').innerText = `總共 15 題，你答對了 ${score} 題！`;
+
+        const errorList = document.getElementById('error-list');
+        errorList.innerHTML = '';
+        
+        if (score === 15) {
+            errorList.innerHTML = '<p class="correct">太棒了！全部答對！🌟</p>';
+        } else {
+            userAnswers.forEach(ans => {
+                if (!ans.isCorrect) {
+                    const div = document.createElement('div');
+                    div.className = 'result-item';
+                    div.innerHTML = `
+                        <div>題目：${ans.question}</div>
+                        <div>你的答案：<span class="wrong">${ans.selected}</span> | 正確答案：<span class="correct">${ans.correct}</span></div>
+                    `;
+                    errorList.appendChild(div);
+                }
+            });
+        }
+    }
+</script>
+
+</body>
+</html>
